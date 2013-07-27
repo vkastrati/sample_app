@@ -13,6 +13,12 @@ class User < ActiveRecord::Base
   attr_accessible :email, :name, :password, :password_confirmation
   has_secure_password
   has_many :microposts, dependent: :destroy
+  has_many :relatonships, foreign_key: "follower_id", dependent: :destroy
+  has_many :followed_users, through: :relatonships, source: :followed
+  has_many :reverse_relatonships, foreign_key: "followed_id",
+      class_name: "Relatonship",
+          dependent: :destroy
+      has_many :followers, through: :reverse_relatonships, source: :follower
 
   # before_save { |user| user.email = email.downcase } # An alternate implementation of the before_save callback
 
@@ -30,7 +36,20 @@ class User < ActiveRecord::Base
 
   def feed
     # This is preliminary. See "Following users" for the full implementation.
-    Micropost.where("user_id = ?", id)
+    #Micropost.where("user_id = ?", id)
+    Micropost.from_users_followed_by(self)
+  end
+
+  def following?(other_user)
+    relatonships.find_by_followed_id(other_user.id)
+  end
+
+  def follow!(other_user)
+    relatonships.create!(followed_id: other_user.id)
+  end
+
+  def unfollow!(other_user)
+    relatonships.find_by_followed_id(other_user.id).destroy
   end
 
   private
